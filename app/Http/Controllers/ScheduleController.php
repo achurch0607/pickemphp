@@ -55,14 +55,17 @@ class ScheduleController extends Controller
 //        dd($request);
 //        $week = $request->input('week');
         //need method to get current week in model
-        $currentWeek = 16;
+//        dd($request);
+        $week = $request->input('week');
+        $selectedWeek = $week ? $week : $schedule->getCurrentWeek();
 //        dd($week);
-        $currentSchedule = $schedule->getWeekSchedule($currentWeek);
-        $userPicks = $picks->getUserPicksByID();
+        $currentSchedule = $schedule->getWeekSchedule($selectedWeek);
+        $expiredGames = $schedule->getExpiredGames($selectedWeek);
+        $userPicks = $picks->getCurrentUserPicks();
         
 //        dd($currentSchedule);
         
-        return view('schedule', compact('currentSchedule', 'currentWeek', 'userPicks'));
+        return view('schedule', compact('currentSchedule', 'selectedWeek', 'userPicks', 'expiredGames'));
     }
 
     /**

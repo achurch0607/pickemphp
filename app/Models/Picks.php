@@ -30,11 +30,16 @@ class Picks extends Model
        return true;
     }
     
-    public function getUserPicksByID() {
-               $userID = auth()->user()->id; 
-
-       $userPicks = DB::table($this->table)->where('userID', '=', $userID)->get();
-       return $userPicks;
+    public function getcurrentUserPicks() {
+        $userID = auth()->user()->id; 
+        
+        $allPicks = DB::table($this->table)->select('gameID', 'pickID')->where('userID', '=', $userID)->get();
+        $userPicks = array();
+        foreach($allPicks as $pick) {
+            $userPicks[$pick->gameID] = $pick->pickID;
+        }
+        
+        return $userPicks;
     }
    
    

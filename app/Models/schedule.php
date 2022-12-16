@@ -20,47 +20,48 @@ class schedule extends Model
         //if no week passed in set week to current week
 
         $userID = auth()->user()->id;
-        $currentSchedule = DB::table('nflp_schedule')
-            ->join('nflp_picks', 'nflp_schedule.gameID', '=', 'nflp_picks.gameID')
-//            ->where("nflp_picks.userID", "=", $userID)
-            ->get(); 
-        
+        $currentSchedule = DB::table('nflp_schedule')->where('weekNum','=',$week)->orderBy('gameTimeEastern', 'asc')->get(); 
         return $currentSchedule;
         
     }
     
     public function getCurrentWeek() {
 	//get the current week number
-        global $mysqli;
-        $sql = "select distinct weekNum from " . DB_PREFIX . "schedule where DATE_ADD(NOW(), INTERVAL " . SERVER_TIMEZONE_OFFSET . " HOUR) < gameTimeEastern order by weekNum limit 1";
-        $query = $mysqli->query($sql);
-        if ($query->num_rows > 0) {
-            $row = $query->fetch_assoc();
-            return $row['weekNum'];
+        $offset = config('constants.options.SERVER_TIMEZONE_OFFSET');
+        $results = DB::select("SELECT DISTINCT weekNum from $this->table WHERE DATE_ADD(NOW(), INTERVAL $offset HOUR) < gameTimeEastern order by weekNum limit 1");
+        if( count($results) > 0) {
+           return  $results[0]->weekNum;
         } else {
-            $sql = "select max(weekNum) as weekNum from " . DB_PREFIX . "schedule";
-            $query2 = $mysqli->query($sql);
-            if ($query2->num_rows > 0) {
-                $row = $query2->fetch_assoc();
-                return $row['weekNum'];
-            }
-            $query2->free;
+            $sql = DB::select("select max(weekNum) as weekNum from $this->table");
+            return $sql[0]->weekNum;
         }
-        $query->free;
-        die('Error getting current week: ' . $mysqli->error);
+    }
+    
+    /*
+     * @return gameID of games before current time. expired games that can not be selected
+     */
+    public function getExpiredGames($week) {
+        $offset = config('constants.options.SERVER_TIMEZONE_OFFSET');
+//        $cutoffDateTime = $this->getCutoffDateTime($week);
+//        $sql = "select * from " . DB_PREFIX . "schedule where weekNum = " . $_POST['week'] . " and (DATE_ADD(NOW(), INTERVAL " . SERVER_TIMEZONE_OFFSET . " HOUR) < gameTimeEastern and DATE_ADD(NOW(), INTERVAL " . SERVER_TIMEZONE_OFFSET . " HOUR) < '" . $cutoffDateTime . "');";
+        $sql =  DB::select("select gameID from $this->table where weekNum = $week and (DATE_ADD(NOW(), INTERVAL $offset HOUR) > gameTimeEastern)");
+        $expired = array();
+         foreach($sql as $gID) {
+            array_push($expired, $gID->gameID);
+        }
+//        dd($expired);
+        return $expired;
+        
     }
 
     public function getCutoffDateTime($week) {
         //get the cutoff date for a given week
-        global $mysqli;
-        $sql = "select gameTimeEastern from " . DB_PREFIX . "schedule where weekNum = " . $week . " and DATE_FORMAT(gameTimeEastern, '%W') = 'Sunday' order by gameTimeEastern limit 1;";
-        $query = $mysqli->query($sql);
-        if ($query->num_rows > 0) {
-            $row = $query->fetch_assoc();
-            return $row['gameTimeEastern'];
-        }
-        $query->free;
-        die('Error getting cutoff date: ' . $mysqli->error);
+        
+        $sql = DB::select("SELECT gameTimeEastern FROM $this->table WHERE weekNum = " . $week . " and DATE_FORMAT(gameTimeEastern, '%W') = 'Sunday' order by gameTimeEastern limit 1");
+//        dd($sql);
+        return $sql[0]->gameTimeEastern;
+        
+        
     }
 
     public function getFirstGameTime($week) {
